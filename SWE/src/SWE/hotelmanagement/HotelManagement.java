@@ -1,15 +1,19 @@
 /**
- * 
+ *
+
  */
 package SWE.hotelmanagement;
 
 import java.util.ArrayList;
 import java.util.UUID;
 
+import SWE.Interface.DAO.HotelDAO;
 import SWE.hotelmanagement.hotels.Hotel;
 import SWE.hotelmanagement.hotels.Room;
 import SWE.usermanagement.users.AbstractUser;
+import SWE.usermanagement.users.Analyst;
 import SWE.usermanagement.users.Hotelier;
+import SWE.usermanagement.users.PrivateUser;
 
 import org.joda.time.DateTime;
 
@@ -18,8 +22,7 @@ import org.joda.time.DateTime;
  *
  */
 public class HotelManagement {
-	private static HotelDAO hotelDAO;
-	private static UserDAO userDAO;
+	private HotelDAO hotelDAO;
 	private AbstractUser session;
 	
 	/**
@@ -35,19 +38,7 @@ public class HotelManagement {
 		hotelDAO = new HotelDAO(filename);
 	}
 
-	/**
-	 * @return the userDAO
-	 */
-	public UserDAO getUserDAO() {
-		return userDAO;
-	}
-	/**
-	 * @param filename the UserDAO to set
-	 */
-	public void setUserDAO(String filename) {	
-		userDAO = new UserDAO(filename);
-	}	
-	
+
 	/**
 	 * erstellen eines neuen Hotels durch einen Hotelier
 	 * @param name
@@ -61,8 +52,9 @@ public class HotelManagement {
 	 * @param adress
 	 */
 	public void createHotel(String name, int numberSingleRooms,int numberDoubleRooms, double priceSingleRooms,
-			double priceDoubleRooms, int category, UUID userID, int postalCode, String adress) {
+			double priceDoubleRooms, int category, int postalCode, String adress) {
 		if(session instanceof Hotelier) {		// nur erlaubt für Hoteliers
+			UUID userID = session.getUserID();
 			Hotel hotel=new Hotel(name, numberSingleRooms, numberDoubleRooms, priceSingleRooms, 
 					priceDoubleRooms, category, userID, postalCode, adress);
 			for (int i=0;i<numberDoubleRooms;i++) {			// erstelllt und speichert die Zimmer des Hotels (param: HotelID, RoomType, bookedDates)
@@ -85,7 +77,6 @@ public class HotelManagement {
 	 * @param bookedDates
 	 */
 	public void createRoom(UUID hotelID, int roomType, ArrayList <DateTime> bookedDates) {
-		
 		if(session instanceof Hotelier) {
 			Room room = new Room(hotelID, roomType, bookedDates);
 			hotelDAO.saveRoom(room);
@@ -95,66 +86,101 @@ public class HotelManagement {
 		}
 	}
 	
-    /**
-     *  Anzahl aller erfassten Benutzer ausgeben
-     *  @return int Alle User
-     */
-    public int numberOfUsers() {
-    	int anzahlUser=userDAO.getUserList().size();
-    	return anzahlUser;
-    }
+    
 	/**
-	 * Anzahl aller auf der Seite registrierten Hotels
+	 * Buchung erstellen für eingeloggten PrivateUser
+	 * @param checkIn
+	 * @param checkOut
+	 * @param room
+	 */
+	public void createBuchung(DateTime checkIn, DateTime checkOut, Room room) {
+		if(session instanceof PrivateUser) {
+			Buchung buchung = new Buchung (session.getUserID(), checkIn, checkOut, room);
+			hotelDAO.saveBuchung(buchung);
+		}
+		else {
+			new  IllegalArgumentException("Die Aktion 'createBuchung' kann nur von einem privaten Benutzer durchgeführt werden.");
+		}
+	}
+	
+	
+	/**
+	 * ueberpruefen, ob Zimmer zu bestimmtem Datum frei ist
+	 * @param checkIn
+	 * @param checkOut
+	 * @param bookedRoom
+	 * @return boolean - true, falls Zimmer frei; false, falls Zimmer besetzt
+	 */
+	public boolean checkRoomAvailability(DateTime checkInDate, DateTime checkOutDate, Room bookedRoom) {
+		ArrayList<DateTime> bookedDates = bookedRoom.getBookedDate();
+		while(checkOutDate.isAfter(checkInDate)) {
+			if(bookedDates.contains(checkInDate)) {
+				return false;
+			}
+			checkInDate.plusDays(1);
+		}
+		return true; 	// nur aufgerufen, falls in Schleife nicht vorhanden
+	}
+	
+	
+	/**
+	 * Anzahl aller auf der Seite registrierten Hotels (nur von Analyst ausführbar)
 	 * @return int
 	 */
     public int numberOfHotels() {
-    	int anzahlHotel=hotelDAO.getHotelList().size();
-    	return anzahlHotel;
+		if(session instanceof Analyst) {
+			int anzahlHotel=hotelDAO.getHotelList().size();
+			return anzahlHotel;
+		}
+		else {
+			new  IllegalArgumentException("Die Aktion 'numberOfHotels' kann nur von einem Analyst durchgeführt werden.");
+			return 0;
+		}
     }
     
     /**
-     * durchschnittliche Bewertung eines Hotels berechnen
+     * durchschnittliche Bewertung eines Hotels berechnen (nur von Analyst ausführbar)
      * @param hotel
      * @return
      */
     public double averageBewertungHotel(Hotel hotel) {
-    	ArrayList<Integer> bewertung = hotel.getBewertung();
-    	double wert=0;
-    	for (int i=0;i<bewertung.size();i++) {
-    		wert+=bewertung.get(i);
-    	}
-    	wert=wert/bewertung.size();
-    	return wert;
+		if(session instanceof Analyst) {
+			ArrayList<Integer> bewertung = hotel.getBewertung();
+			double wert=0;
+			for (int i=0;i<bewertung.size();i++) {
+				wert+=bewertung.get(i);
+			}
+			wert=wert/bewertung.size();
+			return wert;
+		}
+		else {
+			new  IllegalArgumentException("Die Aktion 'averageBewertungHotel' kann nur von einem Analyst durchgeführt werden.");
+			return 0;
+		}
     }
     
     /**
-     * Hotel mit der besten durchschnittlichen Bewertung finden
+     * Hotel mit der besten durchschnittlichen Bewertung finden (nur von Analyst ausführbar)
      * @return
      */
     public Hotel bestHotel() {
-    	ArrayList<Hotel> hotels = hotelDAO.getHotelList();
-    	Hotel bestHotel=hotels.get(0);
-    	for (int i=0; i<hotels.size();i++) {
-    		if(averageBewertungHotel(bestHotel)<averageBewertungHotel(hotels.get(i))) {
-    			bestHotel=hotels.get(i);
-    		}
-    	}
-    	return bestHotel;
+		if(session instanceof Analyst) {
+			ArrayList<Hotel> hotels = hotelDAO.getHotelList();
+			Hotel bestHotel=hotels.get(0);
+			for (int i=0; i<hotels.size();i++) {
+				if(averageBewertungHotel(bestHotel)<averageBewertungHotel(hotels.get(i))) {
+					bestHotel=hotels.get(i);
+				}
+			}
+			return bestHotel;
+		}
+		else {
+			new  IllegalArgumentException("Die Aktion 'averageBewertungHotel' kann nur von einem Analyst durchgeführt werden.");
+			return null;
+		}
     }
     
-    /**
-     * Statistiken ausgeben zu Anzahl User, Anzahl Hotels, bestbewertetes Hotel, ...
-     * @return
-     */
-    public String getStatistics() {
-    	String statistics;
-    	statistics="Anzahl aller User: "+ numberOfUsers() + "\n"
-    			+ "Anzahl aller Hotels: " + numberOfHotels() + "\n"
-    			+ "Hotel mit der besten durchschnittlichen Bewertung: " + bestHotel().getName() + "\n";
-    	return statistics;
-    }
-    
-    /**
+        /**
      * 
      * @param name
      * @param eingabe
@@ -181,64 +207,56 @@ public class HotelManagement {
 	 *	</center>
 	 *	</form></body></html>
      */
+
+
     public ArrayList<Hotel> sucheHotel(String name, String eingabe){
     	
    	ArrayList<Hotel> gesuchteHotel = new ArrayList<Hotel>();
+   
+   	// Bekommt null übergeben
    	ArrayList<Hotel> hotels = hotelDAO.getHotelList();
-
-    if(eingabe.equals("name")){
-    	for(int i =0;i<hotels.size();i++){
-    		Hotel hotel = hotels.get(i);
-    		if(hotel.getName().equals(name)){
-    			gesuchteHotel.add(hotels.get(i));
+	
+   	 if(eingabe.equals("name")){
+    		for(int i =0;i<hotels.size();i++){
+    			Hotel hotel = hotels.get(i);
+    			if(hotel.getName().equals(name)){
+    				gesuchteHotel.add(hotels.get(i));
+    			}
     		}
-    	}
     		
-    	return gesuchteHotel;
-    }	
+    		return gesuchteHotel;
+   	 }	
     
-    if(eingabe.equals("plz")){
-   	int plz = Integer.parseInt(name);
-    	for(int i=0;i<hotels.size();i++){
-    		Hotel hotel = hotels.get(i);
-    		if(hotel.getPostalCode() == plz){
-    			gesuchteHotel.add(hotels.get(i));
+   	 if(eingabe.equals("plz")){
+   		int plz = Integer.parseInt(name);
+   	 	for(int i=0;i<hotels.size();i++){
+    			Hotel hotel = hotels.get(i);
+    			if(hotel.getPostalCode() == plz){
+    				gesuchteHotel.add(hotels.get(i));
+    			}
     		}
-    	}
-    	return gesuchteHotel;
-    }
+    		return gesuchteHotel;
+   	 }
    	
-   	if(eingabe.equals("kategorie")){
-   		int kategorie = Integer.parseInt(name);
-    	for(int i=0;i<hotels.size();i++){
-    		Hotel hotel = hotels.get(i);
-    		if(hotel.getCategory() == kategorie){
-    			gesuchteHotel.add(hotels.get(i));
+   		if(eingabe.equals("kategorie")){
+   			int kategorie = Integer.parseInt(name);
+   	 	for(int i=0;i<hotels.size();i++){
+    			Hotel hotel = hotels.get(i);
+    			if(hotel.getCategory() == kategorie){
+    				gesuchteHotel.add(hotels.get(i));
+    			}
     		}
+    		return gesuchteHotel;
     	}
+    	
+    	
     	return gesuchteHotel;
+   	}
+    
+    public ArrayList<Room> sucheZimmer(Hotel hotel, DateTime CheckIn, DateTime CheckOut, int zimmertyp){
+    	ArrayList<Room> gesuchteZimmer = new ArrayList<Room>();
+    	
+    	
+    	return gesuchteZimmer;
     }
-    	
-    	
-    return gesuchteHotel;
-   }
-}
-
-
-
-/**
- * benötigte Klasse mit Methoden...
- * löschen, sobald DAOs fertig
-  */
-class HotelDAO {
-	public HotelDAO(String i) {}
-	public HotelDAO(){}
-	void saveHotel(Hotel hotel) {}
-	void saveRoom (Room room) {}
-	public ArrayList<Hotel> getHotelList() {return null;}
-}
-
-class UserDAO {
-	public UserDAO(String filename) {}
-	public ArrayList<AbstractUser> getUserList() {return null;}
 }

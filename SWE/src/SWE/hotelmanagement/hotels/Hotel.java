@@ -1,4 +1,4 @@
-/**
+//**
  * 
  */
 package SWE.hotelmanagement.hotels;
@@ -11,7 +11,7 @@ import java.util.UUID;
  * @author Katharina Ehrenhuber
  *
  */
-public class Hotel implements Serializable{
+public class Hotel  implements Serializable {
 	private UUID hotelID;
 	private String name;
 	private int numberSingleRooms;
@@ -41,7 +41,6 @@ public class Hotel implements Serializable{
 	 */
 	public Hotel(String name, int numberSingleRooms,int numberDoubleRooms, double priceSingleRooms,
 			double priceDoubleRooms, int category, UUID userID, int postalCode, String adress) {
-	
 		setHotelID(UUID.randomUUID());
 		setName(name);
 		setNumberSingleRooms(numberSingleRooms);
@@ -54,7 +53,6 @@ public class Hotel implements Serializable{
 		setAdress(adress);
 		setKommentar(new ArrayList<String>());
 		setBewertung(new ArrayList<Integer>());
-
 	}
 	
 	
@@ -233,5 +231,18 @@ public class Hotel implements Serializable{
 		this.bewertung = bewertung;
 	}
 
+	public void toString(ArrayList<Hotel> ausgabe){
+	 for(int i=0;i<ausgabe.size();i++){
+		 Hotel hotel = ausgabe.get(i);
+	     System.out.println("Name des Hotels :" +  hotel.getName());
+    	 System.out.println("Adresse des Hotels: " + hotel.getAdress());
+		 System.out.println("Hotel Bezirk: " + hotel.getPostalCode());
+    	 System.out.println("Anzahl der Einbettzimmer: " + hotel.getNumberSingleRooms());
+		 System.out.println("Preis pro Einzelzimmer: " + hotel.getPriceSingleRooms());
+    	 System.out.println("Anzahl der Doppelzimmer: " + hotel.getNumberDoubleRooms());
+    	 System.out.println("Preis pro Doppelzimmer: " +  hotel.getPriceDoubleRooms());
+		 
+	 }
+	}
 	
 }
